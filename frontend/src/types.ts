@@ -1,0 +1,102 @@
+export interface ToolVersion {
+  id: string
+  tool_id: string
+  version_number: number
+  created_at: string
+  display_name: string
+  model_facing_description: string
+  parameter_schema: Record<string, unknown>
+  response_mode: 'static' | 'dynamic' | 'manual'
+  static_response: unknown
+  dynamic_code: string | null
+  dynamic_approved: number
+}
+
+export interface Tool {
+  id: string
+  name: string
+  description: string
+  tags: string[]
+  created_at: string
+  versions: ToolVersion[]
+}
+
+export interface ModelConfig {
+  id: string
+  name: string
+  provider_kind: string
+  base_url: string
+  model_snapshot: string
+  api_key_env: string
+  params: Record<string, unknown>
+  input_cost_per_1k: number
+  output_cost_per_1k: number
+  created_at: string
+}
+
+export interface RunSettings {
+  repetitions: number
+  tool_order_strategy: 'fixed' | 'randomized_per_session'
+  max_turns: number
+  max_tool_calls: number
+  timeout_seconds: number
+}
+
+export interface PlanVersion {
+  id: string
+  plan_id: string
+  version_number: number
+  created_at: string
+  model_config_snapshot: ModelConfig
+  system_prompt: string
+  user_prompt: string
+  run_settings: RunSettings
+  tool_versions: ToolVersion[]
+}
+
+export interface Plan {
+  id: string
+  name: string
+  description: string
+  created_at: string
+  versions: PlanVersion[]
+}
+
+export interface SessionTotals {
+  turns: number
+  tool_calls: number
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  wall_clock_ms: number
+}
+
+export type SessionStatus = 'pending' | 'running' | 'completed' | 'aborted' | 'errored'
+
+export interface Session {
+  id: string
+  plan_version_id: string
+  started_at: string | null
+  ended_at: string | null
+  status: SessionStatus
+  termination_reason: string | null
+  tool_order_used: string[]
+  totals: Partial<SessionTotals>
+}
+
+export interface Event {
+  id: string
+  session_id: string
+  sequence_no: number
+  timestamp: string
+  type: string
+  payload: Record<string, unknown>
+  latency_ms: number | null
+  token_usage: Record<string, number> | null
+  tool_call_id: string | null
+}
+
+export interface SessionDetail extends Session {
+  events: Event[]
+  plan_version: PlanVersion
+}

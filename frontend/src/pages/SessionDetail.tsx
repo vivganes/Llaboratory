@@ -1,0 +1,229 @@
+import { useState, useEffect, useRef } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, StopCircle, BarChart2, Download, Play } from 'lucide-react'
+import { api } from '../api/client'
+import StatusBadge from '../components/StatusBadge'
+import EventTimeline from '../components/EventTimeline'
+import type { Event, Session } from '../types'
+
+export default function SessionDetail() {
+  const { sessionId } = useParams<{ sessionId: string }>()
+  const qc = useQueryClient()
+
+  const { data: session, refetch } = useQuery({
+    queryKey: ['sessions', sessionId],
+    queryFn: () => api.sessions.get(sessionId!),
+    refetchInterval: (query) => query.state.data?.status === 'running' ? 2000 : false,
+  })
+
+  const [liveEvents, setLiveEvents] = useState<Event[]>([])
+  const [streaming, setStreaming] = useState(false)
+  const esRef = useRef<EventSource | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!sessionId || !session) return
+    if (session.status !== 'running') return
+
+    const es = new EventSource(`/api/sessions/${sessionId}/stream`)
+    esRef.current = es
+    setStreaming(true)
+
+    es.addEventListener('message', (e) => {
+      const data = JSON.parse(e.data)
+      if (data.type === 'stream_delta') return  // skip raw deltas from timeline
+      setLiveEvents(prev => [...prev, {
+        id: `live-${data.sequence_no}`,
+        session_id: sessionId!,
+        sequence_no: data.sequence_no,
+        timestamp: new Date().toISOString(),
+        type: data.type,
+        payload: data.payload ?? {},
+        latency_ms: data.latency_ms ?? null,
+        token_usage: data.token_usage ?? null,
+        tool_call_id: data.tool_call_id ?? null,
+      }])
+    })
+
+    es.addEventListener('done', () => {
+      setStreaming(false)
+      es.close()
+      refetch()
+    })
+
+    es.onerror = () => {
+      setStreaming(false)
+      es.close()
+    }
+
+    return () => { es.close() }
+  }, [session?.status, sessionId])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [liveEvents])
+
+  const [starting, setStarting] = useState(false)
+
+  async function handleRun() {
+    if (!sessionId) return
+    setStarting(true)
+    try {
+      await api.sessions.run(sessionId)
+      refetch()
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  async function handleAbort() {
+    if (!sessionId) return
+    await api.sessions.abort(sessionId)
+    refetch()
+  }
+
+  const isRunning = session?.status === 'running'
+  const isPending = session?.status === 'pending'
+  const events = session?.events ?? []
+  const displayEvents = events.length > 0 ? events : liveEvents
+  const totals = session?.totals ?? {}
+
+  const { data: analysis } = useQuery({
+    queryKey: ['analysis', session?.plan_version_id],
+    queryFn: () => api.analysis.planVersion(session!.plan_version_id),
+    enabled: !!session && session.status === 'completed',
+  })
+
+  return (
+    <div className="p-6 max-w-4xl">
+      <div className="flex items-center gap-3 mb-5">
+        <Link to="/sessions" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft className="w-4 h-4" /> Sessions
+        </Link>
+        <span className="text-gray-300">/</span>
+        <span className="text-sm font-mono text-gray-400">{sessionId?.slice(0, 8)}…</span>
+      </div>
+
+      <div className="flex items-start gap-4 mb-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            {session && <StatusBadge status={session.status} />}
+            {streaming && (
+              <span className="flex items-center gap-1.5 text-xs text-blue-600">
+                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                streaming
+              </span>
+            )}
+            {session?.termination_reason && (
+              <span className="text-xs text-gray-400">{session.termination_reason}</span>
+            )}
+          </div>
+          {session?.plan_version && (
+            <p className="text-sm text-gray-500">
+              Model: <span className="font-mono">{session.plan_version.model_config_snapshot.model_snapshot}</span>
+              {' · '}
+              {session.plan_version.tool_versions.length} tool(s)
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2 shrink-0">
+          {isPending && (
+            <button
+              onClick={handleRun}
+              disabled={starting}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+            >
+              <Play className="w-3.5 h-3.5" /> {starting ? 'Starting…' : 'Start Session'}
+            </button>
+          )}
+          {isRunning && (
+            <button
+              onClick={handleAbort}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
+            >
+              <StopCircle className="w-3.5 h-3.5" /> Abort
+            </button>
+          )}
+          {session?.plan_version_id && analysis && (
+            <a
+              href={api.analysis.exportCsvUrl(session.plan_version_id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-50"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Totals */}
+      {Object.keys(totals).length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
+          {[
+            ['Turns', totals.turns],
+            ['Tool calls', totals.tool_calls],
+            ['In tokens', totals.input_tokens],
+            ['Out tokens', totals.output_tokens],
+            ['Cost', totals.cost_usd != null ? `$${(totals.cost_usd as number).toFixed(5)}` : '—'],
+            ['Duration', totals.wall_clock_ms != null ? `${((totals.wall_clock_ms as number) / 1000).toFixed(1)}s` : '—'],
+          ].map(([label, value]) => (
+            <div key={label as string} className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+              <p className="text-xs text-gray-400 mb-1">{label}</p>
+              <p className="text-lg font-semibold text-gray-900">{value ?? '—'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Prompts */}
+      {session?.plan_version && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
+          {session.plan_version.system_prompt && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">System prompt</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{session.plan_version.system_prompt}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1">User prompt</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{session.plan_version.user_prompt}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Events */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">
+          Event Timeline
+          <span className="ml-2 text-xs font-normal text-gray-400">({displayEvents.length} events)</span>
+        </h2>
+        <EventTimeline events={displayEvents} />
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Analysis summary for completed sessions */}
+      {analysis && session?.status === 'completed' && (
+        <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart2 className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-sm font-semibold text-gray-700">Plan Version Analysis</h2>
+            <span className="text-xs text-gray-400">({(analysis as Record<string, unknown>).session_count as number} session(s))</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([
+              ['Completed', (analysis as Record<string, unknown>).completed],
+              ['Errored', (analysis as Record<string, unknown>).errored],
+              ['No tool call', `${(((analysis as Record<string, unknown>).no_tool_call_rate as number) * 100).toFixed(0)}%`],
+            ] as [string, unknown][]).map(([label, value]) => (
+              <div key={label} className="text-center">
+                <p className="text-xs text-gray-400">{label}</p>
+                <p className="text-base font-semibold text-gray-900">{String(value)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
