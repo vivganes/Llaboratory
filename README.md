@@ -41,8 +41,14 @@ Dynamic tool code runs **in-process without sandboxing**. This is intentional fo
 Never execute dynamic code from untrusted sources. See §10.6 of the PRD for the full rationale.
 
 ## Running Tests
-
+### Backend
 ```bash
 cd backend
 uv run pytest -v --tb=short
+```
+
+### Frontend
+```bash
+cd frontend
+npm test
 ```
