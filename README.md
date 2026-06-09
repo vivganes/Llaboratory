@@ -1,5 +1,6 @@
-<img src="logo.png" style="align: center; height: '300px'"></img>
-
+<div align="center">
+    <img src="logo.png" style="align: center; width:30%; height: auto"></img>
+</div>
 
 # Llaboratory
 
