@@ -1,5 +1,4 @@
 import json
-import pytest
 
 
 def _make_tool(client):

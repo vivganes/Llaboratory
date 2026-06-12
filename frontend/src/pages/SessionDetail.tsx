@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, StopCircle, BarChart2, Download, Play } from 'lucide-react'
 import { api } from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import EventTimeline from '../components/EventTimeline'
-import type { Event, Session } from '../types'
+import type { Event } from '../types'
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const qc = useQueryClient()
 
   const { data: session, refetch } = useQuery({
     queryKey: ['sessions', sessionId],

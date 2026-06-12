@@ -1,8 +1,6 @@
 """Unit tests for agent loop components (no real API calls)."""
-import json
-import pytest
 
-from app.services.tool_executor import execute_tool, validate_args, execute_dynamic
+from app.services.tool_executor import execute_tool, validate_args
 
 
 # ── validate_args ────────────────────────────────────────────────────────────

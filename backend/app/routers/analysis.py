@@ -11,7 +11,7 @@ import csv
 import io
 
 from app.database import get_db
-from app.models import Session, Event, PlanVersion
+from app.models import PlanVersion, Session
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 

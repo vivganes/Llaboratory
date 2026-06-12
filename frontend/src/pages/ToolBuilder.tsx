@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { api } from '../api/client'
 
@@ -263,17 +263,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-// Inject Tailwind class for input
-const _inputClass = `
-  .input {
-    display: block;
-    width: 100%;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 0.375rem 0.625rem;
-    font-size: 0.875rem;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
-`

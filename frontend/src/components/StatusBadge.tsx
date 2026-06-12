@@ -1,4 +1,3 @@
-import type { SessionStatus } from '../types'
 
 const styles: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-600',

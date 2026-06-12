@@ -1,13 +1,13 @@
-import os
 from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()
-
 from app.database import init_db
-from app.routers import tools, model_configs, plans, sessions, analysis
+from app.routers import analysis, model_configs, plans, sessions, tools
+
+load_dotenv()
 
 
 @asynccontextmanager

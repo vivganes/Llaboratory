@@ -201,7 +201,6 @@ async def _run(session_id: str, db: DBSession) -> None:
             seq += 1
 
             # Streaming deltas forwarded to SSE queue
-            stream_events: list[dict] = []
 
             async def _stream_cb(kind: str, data: Any):
                 q = _session_queues.get(session_id)

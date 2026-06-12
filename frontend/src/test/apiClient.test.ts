@@ -2,7 +2,7 @@
  * Tests for the API client — verifies URL construction, method selection,
  * and error handling without making real network requests.
  */
-import { vi, beforeEach, afterEach } from 'vitest'
+import { beforeEach, vi } from 'vitest'
 
 // We test the URL/method shape by intercepting fetch
 const mockFetch = vi.fn()

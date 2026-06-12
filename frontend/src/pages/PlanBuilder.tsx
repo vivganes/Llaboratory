@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, X, Play } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Play } from 'lucide-react'
 import { api } from '../api/client'
-import type { ToolVersion } from '../types'
 
 export default function PlanBuilder() {
   const { planId } = useParams<{ planId?: string }>()
@@ -68,7 +67,6 @@ export default function PlanBuilder() {
   async function handleSave() {
     setSaving(true)
     try {
-      let savedPlanId = planId
       if (isEdit) {
         await api.plans.addVersion(planId!, buildVersionPayload())
       } else {
@@ -76,7 +74,7 @@ export default function PlanBuilder() {
           name: planName, description: planDesc,
           version: buildVersionPayload(),
         })
-        savedPlanId = created.id
+        void created.id
       }
       qc.invalidateQueries({ queryKey: ['plans'] })
       navigate('/plans')
@@ -88,7 +86,7 @@ export default function PlanBuilder() {
   async function handleSaveAndRun() {
     setRunning(true)
     try {
-      let savedPlan
+      let savedPlan: Awaited<ReturnType<typeof api.plans.create>> | undefined
       if (isEdit) {
         savedPlan = await api.plans.get(planId!)
         await api.plans.addVersion(planId!, buildVersionPayload())
@@ -99,7 +97,8 @@ export default function PlanBuilder() {
           version: buildVersionPayload(),
         })
       }
-      const latest = savedPlan.versions[savedPlan.versions.length - 1]
+      const latest = savedPlan?.versions[savedPlan.versions.length - 1]
+      if (!latest) return
       const session = await api.sessions.create(latest.id)
       await api.sessions.run(session.id)
       qc.invalidateQueries({ queryKey: ['plans', 'sessions'] })

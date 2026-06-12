@@ -1,5 +1,4 @@
 """Session API tests (no real model calls — verifies create/list/get/abort)."""
-import pytest
 
 
 def _setup(client):
