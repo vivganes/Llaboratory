@@ -14,6 +14,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text()
     throw new Error(`${res.status}: ${text}`)
   }
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
 
@@ -29,6 +30,7 @@ export const api = {
     addVersion: (id: string, body: unknown) =>
       req<ToolVersion>(`/tools/${id}/versions`, { method: 'POST', body: JSON.stringify(body) }),
     delete: (id: string) => req<void>(`/tools/${id}`, { method: 'DELETE' }),
+    clone: (id: string) => req<Tool>(`/tools/${id}/clone`, { method: 'POST' }),
   },
 
   modelConfigs: {

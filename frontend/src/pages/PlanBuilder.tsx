@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Play } from 'lucide-react'
+import { ArrowLeft, Play, Search } from 'lucide-react'
 import { api } from '../api/client'
 
 export default function PlanBuilder() {
@@ -17,6 +17,7 @@ export default function PlanBuilder() {
   })
   const { data: allTools = [] } = useQuery({ queryKey: ['tools'], queryFn: api.tools.list })
   const { data: modelConfigs = [] } = useQuery({ queryKey: ['model-configs'], queryFn: api.modelConfigs.list })
+  const [toolSearch, setToolSearch] = useState('')
 
   const [planName, setPlanName] = useState('')
   const [planDesc, setPlanDesc] = useState('')
@@ -185,11 +186,27 @@ export default function PlanBuilder() {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">
           Tools ({selectedToolVersionIds.length} selected)
         </h2>
-        {allTools.length === 0 && (
+        {allTools.length === 0 ? (
           <p className="text-sm text-amber-600">No tools in library yet. <a href="/tools/new" className="underline">Create one first.</a></p>
+        ) : (
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+              placeholder="Search tools by name or description…"
+              value={toolSearch}
+              onChange={e => setToolSearch(e.target.value)}
+            />
+          </div>
         )}
         <div className="space-y-2">
-          {allTools.map(tool => {
+          {(toolSearch
+            ? allTools.filter(t =>
+                t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
+                t.description.toLowerCase().includes(toolSearch.toLowerCase())
+              )
+            : allTools
+          ).map(tool => {
             if (tool.versions.length === 0) return null
             const selectedVersionId = selectedVersionForTool(tool.id)
             const isSelected = !!selectedVersionId

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ToolLibrary from './pages/ToolLibrary'
+import ToolDetail from './pages/ToolDetail'
 import ToolBuilder from './pages/ToolBuilder'
 import ModelConfigs from './pages/ModelConfigs'
 import Plans from './pages/Plans'
@@ -16,6 +17,7 @@ export default function App() {
           <Route index element={<Navigate to="/tools" replace />} />
           <Route path="tools" element={<ToolLibrary />} />
           <Route path="tools/new" element={<ToolBuilder />} />
+          <Route path="tools/:toolId" element={<ToolDetail />} />
           <Route path="tools/:toolId/edit" element={<ToolBuilder />} />
           <Route path="models" element={<ModelConfigs />} />
           <Route path="plans" element={<Plans />} />

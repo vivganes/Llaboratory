@@ -29,6 +29,7 @@ class Tool(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[str] = mapped_column(Text, default="[]")  # JSON array of strings
+    built_in: Mapped[bool] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     versions: Mapped[list["ToolVersion"]] = relationship(

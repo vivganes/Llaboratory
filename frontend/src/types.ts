@@ -17,6 +17,7 @@ export interface Tool {
   name: string
   description: string
   tags: string[]
+  built_in: boolean
   created_at: string
   versions: ToolVersion[]
 }

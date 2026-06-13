@@ -56,8 +56,14 @@ export default function ToolBuilder() {
   const [jsonError, setJsonError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const [builtInBlocked, setBuiltInBlocked] = useState(false)
+
   useEffect(() => {
     if (tool) {
+      if (tool.built_in) {
+        setBuiltInBlocked(true)
+        return
+      }
       setName(tool.name)
       setDescription(tool.description)
       setTags(tool.tags.join(', '))
@@ -128,7 +134,21 @@ export default function ToolBuilder() {
       <h1 className="text-xl font-semibold mb-6">
         {isEdit ? `Edit Tool${tool ? ` — ${tool.name}` : ''}` : 'New Tool'}
       </h1>
-      {isEdit && (
+      {builtInBlocked && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          <strong>This is a built-in tool.</strong> Built-in tools cannot be edited directly.
+          <button
+            onClick={async () => {
+              const cloned = await api.tools.clone(tool!.id)
+              navigate(`/tools/${cloned.id}/edit`)
+            }}
+            className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
+          >
+            Clone it instead
+          </button>
+        </div>
+      )}
+      {isEdit && !builtInBlocked && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
           Saving will create a new version. Existing plan versions remain unaffected.
         </div>

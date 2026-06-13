@@ -14,6 +14,10 @@
 
 A self-hostable, open-source laboratory for studying how LLMs behave when offered a set of fake tools.
 
+## Screenshot
+
+![Screenshot of fake tools page](./screenshot.png)
+
 ## Quick Start
 
 ### Docker Compose (recommended)
@@ -28,6 +32,7 @@ Open http://localhost:5173 for the UI. The frontend will proxy API calls to the 
 
 ```bash
 cd backend
+uv venv
 uv pip install -e ".[dev]"
 cp ../.env.example ../.env   # fill in your API keys
 uv run uvicorn app.main:app --reload

@@ -56,6 +56,7 @@ class ToolOut(BaseModel):
     name: str
     description: str
     tags: list[str]
+    built_in: bool
     created_at: datetime
     versions: list[ToolVersionOut]
 
