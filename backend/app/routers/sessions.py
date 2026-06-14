@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.database import get_db, SessionLocal
 from app.models import Session, PlanVersion
-from app.schemas import SessionCreate, SessionOut, SessionDetailOut, EventOut
+from app.schemas import SessionCreate, SessionOut, SessionDetailOut, EventOut, SessionRerunOut
 from app.services.agent_loop import run_session, get_or_create_queue
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -86,6 +86,51 @@ def abort_session(session_id: str, db: DBSession = Depends(get_db)):
     return session
 
 
+@router.post("/{session_id}/rerun", response_model=SessionRerunOut)
+def rerun_session(session_id: str, db: DBSession = Depends(get_db)):
+    """Create a new session using the same PlanVersion and run it."""
+    original = db.get(Session, session_id)
+    if not original:
+        raise HTTPException(404, "Session not found")
+
+    pv = original.plan_version
+    new_session = Session(plan_version_id=pv.id)
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+
+    return SessionRerunOut(
+        original_session_id=session_id,
+        new_session_id=new_session.id,
+        plan_version_id=pv.id,
+    )
+
+
+@router.post("/{session_id}/rerun-and-run", response_model=SessionRerunOut)
+async def rerun_and_run_session(
+    session_id: str,
+    background_tasks: BackgroundTasks,
+    db: DBSession = Depends(get_db),
+):
+    """Rerun: create a new session from the same PlanVersion and immediately start it."""
+    original = db.get(Session, session_id)
+    if not original:
+        raise HTTPException(404, "Session not found")
+
+    pv = original.plan_version
+    new_session = Session(plan_version_id=pv.id)
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+
+    get_or_create_queue(new_session.id)
+    background_tasks.add_task(run_session, new_session.id, SessionLocal)
+
+    return SessionRerunOut(
+        original_session_id=session_id,
+        new_session_id=new_session.id,
+        plan_version_id=pv.id,
+    )
 @router.get("/{session_id}/stream")
 async def stream_session(session_id: str, db: DBSession = Depends(get_db)):
     """SSE endpoint — streams live events while session is running."""

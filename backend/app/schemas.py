@@ -235,3 +235,10 @@ class SessionOut(BaseModel):
 class SessionDetailOut(SessionOut):
     events: list[EventOut]
     plan_version: PlanVersionOut
+
+
+class SessionRerunOut(BaseModel):
+    """Response for the rerun endpoint — returns the original session and the newly created clone."""
+    original_session_id: str
+    new_session_id: str
+    plan_version_id: str

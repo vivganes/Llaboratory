@@ -125,3 +125,48 @@ def test_session_run_fails_missing_env_var(client):
     r = client.get(f"/api/sessions/{session_id}")
     assert r.json()["status"] == "errored"
     assert "TEST_KEY" in r.json()["termination_reason"]
+
+
+def test_rerun_session(client):
+    """Rerun creates a new session with the same plan_version_id."""
+    pv_id = _setup(client)
+    original = client.post("/api/sessions", json={"plan_version_id": pv_id}).json()
+    r = client.post(f"/api/sessions/{original['id']}/rerun")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["original_session_id"] == original["id"]
+    assert data["new_session_id"] != original["id"]
+    assert data["plan_version_id"] == pv_id
+
+    # The new session should exist and be pending
+    new_session = client.get(f"/api/sessions/{data['new_session_id']}").json()
+    assert new_session["status"] == "pending"
+    assert new_session["plan_version_id"] == pv_id
+
+
+def test_rerun_not_found(client):
+    r = client.post("/api/sessions/nonexistent/rerun")
+    assert r.status_code == 404
+
+
+def test_rerun_and_run_missing_env(client):
+    """rerun-and-run should create and start the session; missing env var errors it."""
+    import asyncio
+    import os
+    pv_id = _setup(client)
+    original = client.post("/api/sessions", json={"plan_version_id": pv_id}).json()
+
+    os.environ.pop("TEST_KEY", None)
+
+    r = client.post(f"/api/sessions/{original['id']}/rerun-and-run")
+    assert r.status_code == 200
+    new_id = r.json()["new_session_id"]
+
+    # Background task may not fire in test client context — call run_session directly
+    from app.services.agent_loop import run_session
+    from tests.conftest import TestingSessionLocal
+    asyncio.get_event_loop().run_until_complete(run_session(new_id, TestingSessionLocal))
+
+    new_session = client.get(f"/api/sessions/{new_id}").json()
+    assert new_session["status"] == "errored"
+    assert "TEST_KEY" in new_session["termination_reason"]
