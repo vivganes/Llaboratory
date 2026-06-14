@@ -17,7 +17,7 @@ plan_version_tools = Table(
     "plan_version_tools",
     Base.metadata,
     Column("plan_version_id", String, ForeignKey("plan_versions.id", ondelete="CASCADE")),
-    Column("tool_version_id", String, ForeignKey("tool_versions.id")),
+    Column("tool_version_id", String, ForeignKey("tool_versions.id", ondelete="CASCADE")),
     Column("position", Integer, nullable=False, default=0),
 )
 
