@@ -107,3 +107,36 @@ def test_dynamic_tool_creation(client):
     r = client.post("/api/tools", json=payload)
     assert r.status_code == 201
     assert r.json()["versions"][0]["response_mode"] == "dynamic"
+
+
+def test_delete_tool_referenced_by_plan(client):
+    """Deleting a tool should succeed even if a plan version references it (FK cascade)."""
+    tool = client.post("/api/tools", json=TOOL_PAYLOAD).json()
+    tv_id = tool["versions"][0]["id"]
+    mc = client.post("/api/model-configs", json={
+        "name": "m",
+        "base_url": "https://api.openai.com/v1",
+        "model_snapshot": "gpt-4o-mini",
+        "api_key_env": "OPENAI_API_KEY",
+    }).json()
+    # Create a plan version that references this tool
+    plan = client.post("/api/plans", json={
+        "name": "p",
+        "description": "",
+        "version": {
+            "model_config_id": mc["id"],
+            "tool_version_ids": [tv_id],
+            "system_prompt": "",
+            "user_prompt": "hello",
+        },
+    }).json()
+    pv_id = plan["versions"][0]["id"]
+
+    # Deleting the tool should succeed (cascade cleans up plan_version_tools)
+    r = client.delete(f"/api/tools/{tool['id']}")
+    assert r.status_code == 204
+    assert client.get(f"/api/tools/{tool['id']}").status_code == 404
+
+    # Plan version should still exist (only the junction row is removed)
+    pv = client.get(f"/api/plans/{plan['id']}").json()
+    assert pv["versions"][0]["id"] == pv_id
